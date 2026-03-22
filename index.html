@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Evrim — Stratejik Müşteri & Ürün Analizi 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+<style>
+:root{
+  --bg:#0C1520; --bg1:#111E2D; --bg2:#162032; --bg3:#1C2A3D; --bg4:#243346;
+  --blue:#4B9FE1; --teal:#00C9A7; --orange:#FF6B35; --purple:#8B5CF6;
+  --green:#34D399; --gold:#FBBF24; --red:#F87171; --pink:#EC4899;
+  --text1:#EDF2FF; --text2:#94A8C4; --text3:#4A6070;
+  --border:rgba(255,255,255,0.06);
+}
+/* ── LIGHT MODE ─────────────────────────────────────────────── */
+body.light{
+  --bg:#F4F7FB; --bg1:#EBF0F9; --bg2:#FFFFFF; --bg3:#EDF1FA; --bg4:#DDE5F5;
+  --text1:#0D1B2A; --text2:#3A5470; --text3:#7A96B0;
+  --border:rgba(0,0,0,0.08);
+}
+body.light .hero{background:linear-gradient(135deg,#1a2f4e 0%,#243d60 40%,#1c3555 100%)}
+body.light .nav{background:rgba(244,247,251,0.96);border-bottom-color:rgba(0,0,0,0.1)}
+body.light .card{box-shadow:0 2px 12px rgba(0,0,0,0.06)}
+body.light #tt{background:rgba(255,255,255,0.98);border-color:rgba(0,0,0,0.12);color:#0D1B2A}
+body.light #tt strong{color:#0D1B2A}
+body.light ::-webkit-scrollbar-track{background:var(--bg2)}
+body.light ::-webkit-scrollbar-thumb{background:var(--bg4)}
+/* theme toggle */
+#theme-btn{position:fixed;top:16px;right:24px;z-index:500;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:7px 15px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:6px;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,0.15)}
+#theme-btn:hover{border-color:var(--blue);color:var(--blue)}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text1);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.5;font-size:14px;min-width:900px}
+
+/* HERO */
+.hero{background:linear-gradient(135deg,#0a1422 0%,#142138 40%,#0c1827 100%);padding:64px 80px 52px;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 20% 50%,rgba(75,159,225,.1) 0%,transparent 60%),radial-gradient(ellipse 40% 60% at 75% 30%,rgba(0,201,167,.07) 0%,transparent 55%)}
+.hero-inner{position:relative;z-index:1}
+.hero-tag{display:inline-flex;align-items:center;gap:8px;background:rgba(75,159,225,.1);border:1px solid rgba(75,159,225,.25);border-radius:20px;padding:5px 16px;font-size:11px;font-weight:700;letter-spacing:1.8px;color:var(--blue);text-transform:uppercase;margin-bottom:22px}
+.hero h1{font-size:46px;font-weight:800;letter-spacing:-1.5px;line-height:1.08;max-width:700px}
+.hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--blue),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{display:flex;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap}
+.hero-chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:5px 12px;font-size:13px;color:var(--text2)}
+.badge-secret{position:absolute;top:32px;right:80px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:var(--red);border-radius:8px;padding:7px 16px;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase}
+
+/* NAV */
+.nav{position:sticky;top:0;z-index:200;background:rgba(11,20,31,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:0 80px;display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav-item{padding:15px 18px;font-size:12.5px;font-weight:500;color:var(--text3);cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;transition:all .2s;letter-spacing:.3px}
+.nav-item:hover,.nav-item.active{color:var(--blue);border-bottom-color:var(--blue)}
+
+/* LAYOUT */
+.wrap{max-width:1380px;margin:0 auto;padding:0 80px}
+.section{padding:64px 0;border-bottom:1px solid var(--border)}
+.sec-tag{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--teal);margin-bottom:8px}
+.sec-title{font-size:28px;font-weight:800;letter-spacing:-.5px;margin-bottom:8px}
+.sec-desc{font-size:14px;color:var(--text2);max-width:640px;line-height:1.65}
+.sec-head{margin-bottom:36px}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.g60{display:grid;grid-template-columns:1.6fr 1fr;gap:24px}
+.g65{display:grid;grid-template-columns:1.55fr 1fr;gap:24px}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:28px 32px}
+.card-title{font-size:15px;font-weight:700;margin-bottom:5px}
+.card-sub{font-size:12px;color:var(--text3);margin-bottom:22px}
+
+/* KPI STRIP */
+.kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;padding:40px 0 8px}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:24px 22px;position:relative;overflow:hidden;transition:transform .2s,border-color .2s}
+.kpi:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.12)}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--kc,var(--blue));border-radius:3px 3px 0 0}
+.kpi-lbl{font-size:11px;color:var(--text3);font-weight:600;letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px}
+.kpi-val{font-size:38px;font-weight:900;letter-spacing:-1.5px;color:var(--kc,var(--blue));line-height:1}
+.kpi-sub{font-size:11.5px;color:var(--text3);margin-top:10px}
+.kpi-icon{position:absolute;top:18px;right:20px;font-size:22px;opacity:.25}
+
+/* BADGES */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.b-gold{background:rgba(251,191,36,.12);color:#FBBF24;border:1px solid rgba(251,191,36,.25)}
+.b-teal{background:rgba(0,201,167,.12);color:#00C9A7;border:1px solid rgba(0,201,167,.25)}
+.b-orange{background:rgba(255,107,53,.12);color:#FF6B35;border:1px solid rgba(255,107,53,.25)}
+.b-gray{background:rgba(74,96,112,.15);color:#94A8C4;border:1px solid rgba(74,96,112,.25)}
+
+/* TABLES */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);padding:10px 16px;text-align:left;border-bottom:1px solid var(--border)}
+.tbl td{padding:12px 16px;font-size:13px;color:var(--text2);border-bottom:1px solid rgba(255,255,255,.03);transition:background .15s}
+.tbl tr:hover td{background:var(--bg3)}
+.tbl .nm{color:var(--text1);font-weight:500}
+
+/* VP CARDS */
+.vp{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:24px;position:relative;overflow:hidden}
+.vp::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--vc,var(--blue));border-radius:4px 0 0 4px}
+.vp-num{font-size:10px;color:var(--text3);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px}
+.vp-name{font-size:15px;font-weight:800;margin-bottom:14px}
+.vp-pct{font-size:34px;font-weight:900;letter-spacing:-1px;color:var(--vc,var(--blue));line-height:1}
+.vp-pct-lbl{font-size:11px;color:var(--text3);margin-top:3px;margin-bottom:14px}
+.vp-desc{font-size:12.5px;color:var(--text2);line-height:1.6;margin-bottom:14px}
+.tag-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px}
+.mtag{background:rgba(255,255,255,.06);border-radius:6px;padding:3px 9px;font-size:11px;color:var(--text3)}
+.vp-tip{background:rgba(255,255,255,.04);border-radius:10px;padding:10px 12px;font-size:11.5px;color:var(--vc,var(--blue));line-height:1.5}
+
+/* INSIGHT */
+.insight{background:rgba(75,159,225,.06);border:1px solid rgba(75,159,225,.2);border-radius:14px;padding:18px 22px;font-size:13px;color:var(--text2);margin-top:20px;line-height:1.65}
+.insight strong{color:var(--blue)}
+
+/* TOOLTIP */
+#tt{position:fixed;pointer-events:none;background:rgba(10,18,28,.97);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 16px;font-size:13px;z-index:9999;display:none;max-width:220px;line-height:1.5;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+#tt strong{color:var(--text1)}
+
+/* CAMPAIGN LIST */
+.camp{display:flex;gap:14px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--border)}
+.camp:last-child{border-bottom:none}
+.camp-num{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0}
+.camp-name{font-weight:700;font-size:13px;color:var(--text1);margin-bottom:3px}
+.camp-desc{font-size:12px;color:var(--text3);margin-bottom:4px;line-height:1.4}
+.camp-target{font-size:11.5px;font-weight:700}
+
+/* FOOTER */
+footer{padding:44px 80px;text-align:center;font-size:12px;color:var(--text3);border-top:1px solid var(--border)}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
+</style>
+</head>
+<body>
+<button id="theme-btn" onclick="toggleTheme()">🌙 Dark</button>
+<div id="tt"></div>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-inner">
+    <div class="hero-tag"><span>◉</span> Stratejik Analiz — 2026</div>
+    <h1>Evrim <em>Müşteri & Ürün</em><br>Stratejik Analizi</h1>
+    <div class="hero-sub">
+      <span class="hero-chip">📦 DT Segmenti</span>
+      <span class="hero-chip">👥 137 Müşteri</span>
+      <span class="hero-chip">🧩 26 Ürün Modülü</span>
+      <span class="hero-chip">📅 Mart 2026</span>
+    </div>
+  </div>
+  <div class="badge-secret">● GİZLİ</div>
+</header>
+
+<!-- NAV -->
+<nav class="nav" id="nav">
+  <div class="nav-item active" data-target="kpis">Genel Bakış</div>
+  <div class="nav-item" data-target="panorama">Sektör Analizi</div>
+  <div class="nav-item" data-target="products">Ürün Penetrasyon</div>
+  <div class="nav-item" data-target="segments">Müşteri Segmentasyonu</div>
+  <div class="nav-item" data-target="prodsegs">Ürün Segmentasyonu</div>
+  <div class="nav-item" data-target="sankey">Sektör → Ürün Akışı</div>
+  <div class="nav-item" data-target="valueprop">Değer Önerisi</div>
+  <div class="nav-item" data-target="upsell">Upsell Fırsatları</div>
+  <div class="nav-item" data-target="evrimx">EvrimX Adayları</div>
+</nav>
+
+<main class="wrap">
+
+<!-- KPIs -->
+<div id="kpis" class="kpi-strip"></div>
+
+<!-- PANORAMA -->
+<section id="panorama" class="section">
+  <div class="sec-head">
+    <div class="sec-tag">01 — Müşteri Tabanı</div>
+    <div class="sec-title">Sektör & Segment Dağılımı</div>
+    <div class="sec-desc">137 DT müşterisi 17 sektör grubuna atanmıştır. En büyük gruplar Dış Ticaret & Diğer (26), Tekstil & Hazır Giyim (13) ve İnşaat & Yapı Malzemeleri'dir (11).</div>
+  </div>
+  <div class="g60">
+    <div class="card" id="treemap-card">
+      <div class="card-title">Sektör Dağılımı</div>
+      <div class="card-sub">Kutu büyüklüğü müşteri sayısını gösterir — hover ile detay</div>
+      <svg id="treemap"></svg>
+    </div>
+    <div class="card">
+      <div class="card-title">Müşteri Segmentleri</div>
+      <div class="card-sub">Ürün genişliği × kullanıcı derinliği matrisi</div>
+      <svg id="donut"></svg>
+      <div id="seg-legend"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:24px">
+    <div class="card-title">Müşteri Detay Listesi — Sektöre Göre</div>
+    <div class="card-sub">137 DT müşterisi · ürün adedine göre sıralı · hover = segment detayı</div>
+    <div style="max-height:460px;overflow-y:auto;margin-top:12px;border-radius:10px">
+      <table class="tbl" id="sector-cust-tbl" style="font-size:12.5px"></table>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUCTS -->
+<section id="products" class="section">
+  <div class="sec-head">
+    <div class="sec-tag">02 — Ürün Analizi</div>
+    <div class="sec-title">Ürün Penetrasyon Oranları</div>
+    <div class="sec-desc">DT segmentinde her modülün erişim yüzdesi. İhracat ve İthalat lider; mali entegrasyon ve dijital dönüşüm modüllerinde büyük açık alan var.</div>
+  </div>
+  <div class="card">
+    <svg id="lollipop"></svg>
+  </div>
+  <div class="g4" id="vg-pct-cards" style="margin-top:20px"></div>
+</section>
+
+<!-- SEGMENTS -->
+<section id="segments" class="section">
+  <div class="sec-head">
+    <div class="sec-tag">03 — Segmentasyon</div>
+    <div class="sec-title">Müşteri Segmentasyon Matrisi</div>
+    <div class="sec-desc">Ürün genişliği (kaç modül) ile kullanıcı derinliğinin (kaç kullanıcı) kesişimi 4 strateji segmenti oluşturuyor.</div>
+  </div>
+  <div class="g65">
+    <div class="card">
+      <div class="card-title">Segment Dağılımı — Scatter Plot</div>
+      <div class="card-sub">Her nokta bir müşteri · hover ile detay</div>
+      <svg id="scatter"></svg>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:20px">Segment Profilleri</div>
+      <div id="seg-details"></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUCT SEGMENTS -->
+<section id="prodsegs" class="section">
+  <div class="sec-head">
+    <div class="sec-tag">03b — Ürün Segmentasyonu</div>
+    <div class="sec-title">Ürün Portföy Analizi</div>
+    <div class="sec-desc">19 ürün modülü 4 değer grubuna ayrılmış. Her grubun mevcut penetrasyon oranları ve penetrasyon × gelir potansiyeli matrisi.</div>
+  </div>
+  <div class="g4" id="prod-group-list"></div>
+  <div class="card" style="margin-top:24px">
+    <div class="card-title">Ürün Portföy Matrisi</div>
+    <div class="card-sub">X: mevcut penetrasyon · Y: gelir potansiyeli · hover ile detay</div>
+    <svg id="prod-matrix"></svg>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:14px" id="prod-matrix-legend"></div>
+  </div>
+</section>
+
+<!-- SANKEY -->
+<section id="sankey" class="section">
+  <div class="sec-head">
+    <div class="sec-tag">05 — Akış Analizi</div>
+    <div class="sec-title">Hangi Sektör Hangi Ürünleri Kullanıyor?</div>
+    <div class="sec-desc">Sol taraf sektörler, sağ taraf değer grupları. Akış kalınlığı kullanım yoğunluğunu gösterir. Hover ile detay.</div>
+  </div>
+  <div class="card">
+    <svg id="sankey-chart"></svg>
+  </div>
+</section>
+
+<!-- VALUE PROP -->
+<section id="valueprop" class="section">
+  <div class="sec-head">
+    <div class="sec-tag">06 — Değer Önerisi</div>
+    <div class="sec-title">4 Değer Grubu & Hedef Müşteriler</div>
+    <div class="sec-desc">Her değer grubunun mevcut penetrasyonu, modülleri ve upsell fırsatı. Altta hangi müşteriye ne önerileceği tablosu.</div>
+  </div>
+  <div class="g4" id="vp-cards"></div>
+  <div class="card" style="margin-top:24px">
+    <div class="card-title">Müşteri → Değer Önerisi Eşleşmesi</div>
+    <div class="card-sub">En fazla upsell potansiyeli olan 30 müşteri</div>
+    <table class="tbl" id="vp-tbl"></table>
+  </div>
+</section>
+
+<!-- UPSELL -->
+<section id="upsell" class="section">
+  <div class="sec-head">
+    <div class="sec-tag">07 — Büyüme Fırsatları</div>
+    <div class="sec-title">Upsell & Cross-Sell Öncelikleri</div>
+    <div class="sec-desc">Hangi segment hangi değer grubunda en çok açığa sahip? Kırmızı = en yüksek upsell potansiyeli.</div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">Upsell Fırsat Haritası</div>
+      <div class="card-sub">% sahibi olmayan müşteri (kırmızı = yüksek potansiyel)</div>
+      <div id="heatmap"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Öncelikli Kampanyalar</div>
+      <div class="card-sub">En yüksek ROI beklenen 5 aksiyon</div>
+      <div id="campaigns"></div>
+    </div>
+  </div>
+</section>
+
+<!-- EVRIMX -->
+<section id="evrimx" class="section">
+  <div class="sec-head">
+    <div class="sec-tag">08 — EvrimX</div>
+    <div class="sec-title">EvrimX Geçiş Adayları — Şampiyon Segment</div>
+    <div class="sec-desc">5+ ürün ve 10+ kullanıcıya sahip 9 müşteri, EvrimX bulut geçişi için en hazır adaylardır.</div>
+  </div>
+  <div class="card">
+    <table class="tbl" id="evrimx-tbl"></table>
+  </div>
+  <div class="insight">
+    <strong>Strateji:</strong> Bu 9 müşteriden en az 2'siyle Q2 2026'da EvrimX pilot başlatılması önerilir.
+    THY ve ARÇELİK, referans müşteri konumları için ideal adaylardır.
+    Pilot başarısı DT segmentinin tamamına EvrimX satış ivmesi kazandıracaktır.
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:6px">Evrim Yazılım · Stratejik Müşteri & Ürün Analizi</p>
+  <p>Hazırlayan: Melih Erdurcan · Mart 2026 · Dahili Kullanım — Gizlilik: Kısıtlı</p>
+</footer>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const D = {
+  sectors:{"Dış Ticaret & Diğer":26,"Tekstil & Hazır Giyim":13,"İnşaat & Yapı Malzemeleri":11,"Tüketici Ürünleri & FMCG":9,"Metal & Çelik":8,"Enerji & Madencilik":8,"Teknoloji & Elektronik":7,"Gıda & Tarım":7,"Otomotiv & Yan Sanayi":7,"Lojistik & Taşımacılık":7,"Denizcilik & Liman":6,"Gümrük Müşavirliği":6,"Kimya & Plastik":6,"Makine & Ekipman":5,"Savunma & Havacılık":4,"Kamu & NGO":4,"Mücevher & Aksesuar":3},
+  segments:{"Büyüme Adayı":110,"Uzman":14,"Şampiyon":9,"Çekirdek Kullanıcı":4},
+  pen:{"İhracat":70.1,"İthalat":64.2,"Medos":40.1,"ArsivSistemi":31.4,"Ön Muhasebe":21.9,"E-Fatura":8.0,"Ncts":8.0,"Özet Beyan":7.3,"WebGümrük":7.3,"Antrepo":5.1,"Veri Birleştirme":4.4,"Beyanname API":3.6,"E-Defter":1.5,"EvrimRPA":0.7,"Dinamik Ent":0.7},
+  sankey:{"Dış Ticaret & Diğer":{"Temel Gümrükleme":24,"Belge & Arşiv":3,"Mali Entegrasyon":8,"Dijital Dönüşüm":6},"Tekstil & Hazır Giyim":{"Temel Gümrükleme":12,"Belge & Arşiv":5,"Mali Entegrasyon":2,"Dijital Dönüşüm":2},"İnşaat & Yapı Malzemeleri":{"Temel Gümrükleme":10,"Belge & Arşiv":4,"Dijital Dönüşüm":1},"Tüketici Ürünleri & FMCG":{"Temel Gümrükleme":8,"Belge & Arşiv":3,"Dijital Dönüşüm":1},"Metal & Çelik":{"Temel Gümrükleme":6,"Belge & Arşiv":4,"Mali Entegrasyon":3,"Dijital Dönüşüm":3},"Enerji & Madencilik":{"Temel Gümrükleme":7,"Belge & Arşiv":3,"Mali Entegrasyon":1,"Dijital Dönüşüm":2},"Otomotiv & Yan Sanayi":{"Temel Gümrükleme":6,"Belge & Arşiv":5,"Mali Entegrasyon":1,"Dijital Dönüşüm":2},"Savunma & Havacılık":{"Temel Gümrükleme":3,"Belge & Arşiv":3,"Mali Entegrasyon":1,"Dijital Dönüşüm":3},"Teknoloji & Elektronik":{"Temel Gümrükleme":6,"Belge & Arşiv":2,"Mali Entegrasyon":1,"Dijital Dönüşüm":2},"Gıda & Tarım":{"Temel Gümrükleme":7,"Belge & Arşiv":1,"Mali Entegrasyon":1,"Dijital Dönüşüm":2},"Lojistik & Taşımacılık":{"Temel Gümrükleme":3,"Belge & Arşiv":2,"Mali Entegrasyon":5,"Dijital Dönüşüm":1},"Denizcilik & Liman":{"Temel Gümrükleme":5,"Belge & Arşiv":1,"Mali Entegrasyon":1,"Dijital Dönüşüm":3},"Kimya & Plastik":{"Temel Gümrükleme":6,"Belge & Arşiv":1},"Makine & Ekipman":{"Temel Gümrükleme":4,"Belge & Arşiv":1},"Gümrük Müşavirliği":{"Temel Gümrükleme":6,"Belge & Arşiv":4,"Mali Entegrasyon":4,"Dijital Dönüşüm":1},"Kamu & NGO":{"Temel Gümrükleme":4,"Belge & Arşiv":1},"Mücevher & Aksesuar":{"Temel Gümrükleme":2,"Mali Entegrasyon":2}},
+  top30:[
+    {n:"ÇINAR GÜM.MÜŞ.",s:"Gümrük Müşavirliği",p:17,u:117,seg:"Şampiyon"},
+    {n:"ARÇELİK A.Ş.",s:"Teknoloji & Elektronik",p:12,u:41,seg:"Şampiyon"},
+    {n:"ROYAL GLOBAL",s:"Dış Ticaret & Diğer",p:11,u:5,seg:"Uzman"},
+    {n:"ADATECH GLOBAL LOJİSTİK",s:"Lojistik & Taşımacılık",p:9,u:17,seg:"Şampiyon"},
+    {n:"SAMPA OTOMOTİV",s:"Otomotiv & Yan Sanayi",p:9,u:9,seg:"Uzman"},
+    {n:"TOFAŞ A.Ş.",s:"Otomotiv & Yan Sanayi",p:8,u:25,seg:"Şampiyon"},
+    {n:"TÜRK HAVA YOLLARI",s:"Savunma & Havacılık",p:8,u:133,seg:"Şampiyon"},
+    {n:"EGEDE ZİRVE GÜMRÜK MÜŞ.",s:"Gümrük Müşavirliği",p:8,u:2,seg:"Uzman"},
+    {n:"OKUR GRUP GÜMRÜK MÜŞ.",s:"Gümrük Müşavirliği",p:8,u:5,seg:"Uzman"},
+    {n:"TUSAŞ",s:"Savunma & Havacılık",p:7,u:11,seg:"Şampiyon"},
+    {n:"YAYLA AGRO",s:"Gıda & Tarım",p:7,u:5,seg:"Uzman"},
+    {n:"GÜMÜŞ TİC.",s:"Dış Ticaret & Diğer",p:7,u:13,seg:"Şampiyon"},
+    {n:"SARITAŞ ÇELİK",s:"Metal & Çelik",p:6,u:5,seg:"Uzman"},
+    {n:"TOSÇELİK",s:"Metal & Çelik",p:6,u:1,seg:"Uzman"},
+    {n:"EFESAN DEMİR",s:"Metal & Çelik",p:6,u:4,seg:"Uzman"},
+    {n:"BOTAŞ",s:"Enerji & Madencilik",p:5,u:10,seg:"Şampiyon"},
+    {n:"ERKUL KOZMETİK",s:"Tüketici Ürünleri & FMCG",p:5,u:16,seg:"Şampiyon"},
+    {n:"ÖZAK TEKSTİL",s:"Tekstil & Hazır Giyim",p:5,u:9,seg:"Uzman"},
+    {n:"EDİRNE GİYİM",s:"Tekstil & Hazır Giyim",p:5,u:1,seg:"Uzman"},
+    {n:"MMK METALURJİ",s:"Metal & Çelik",p:5,u:1,seg:"Uzman"},
+    {n:"BSG DANIŞMANLIK",s:"Gümrük Müşavirliği",p:5,u:1,seg:"Uzman"},
+    {n:"PORT DENİZ LOJİSTİK",s:"Lojistik & Taşımacılık",p:5,u:1,seg:"Uzman"},
+    {n:"ALMANARA DIŞ TİC.",s:"Dış Ticaret & Diğer",p:5,u:1,seg:"Uzman"},
+    {n:"SYSTEM DENİM",s:"Tekstil & Hazır Giyim",p:4,u:2,seg:"Büyüme Adayı"},
+    {n:"HÜNER NANO TEKSTİL",s:"Tekstil & Hazır Giyim",p:4,u:2,seg:"Büyüme Adayı"},
+    {n:"TST ORGEM DENİZCİLİK",s:"Denizcilik & Liman",p:4,u:1,seg:"Büyüme Adayı"},
+    {n:"KASTAMONU ENT. AĞAÇ",s:"İnşaat & Yapı Malzemeleri",p:4,u:1,seg:"Büyüme Adayı"},
+    {n:"GİMAŞ TEDARİK",s:"Savunma & Havacılık",p:4,u:1,seg:"Büyüme Adayı"},
+    {n:"DİNİZ ADIENT OTO",s:"Otomotiv & Yan Sanayi",p:4,u:1,seg:"Büyüme Adayı"},
+    {n:"PİR-İNCİ BİJUTERİ",s:"Mücevher & Aksesuar",p:4,u:1,seg:"Büyüme Adayı"},
+    // Çekirdek Kullanıcı segment (<5 ürün, 10+ kullanıcı)
+    {n:"BORSAN KABLO",s:"Metal & Çelik",p:3,u:15,seg:"Çekirdek Kullanıcı"},
+    {n:"ETİ MADEN",s:"Enerji & Madencilik",p:4,u:15,seg:"Çekirdek Kullanıcı"},
+    {n:"MAPA MOBİLYA",s:"Tüketici Ürünleri & FMCG",p:2,u:29,seg:"Çekirdek Kullanıcı"},
+    {n:"TÜPRAŞ",s:"Enerji & Madencilik",p:3,u:20,seg:"Çekirdek Kullanıcı"}
+  ],
+  vgs:[
+    {id:1,lbl:"Temel Gümrükleme",c:"#4B9FE1",mods:["İthalat","İhracat","Medos"],pct:70,
+     desc:"Beyanname hazırlama ve gümrük operasyonlarının dijital çekirdeği. Tüm DT firmaları için giriş noktası.",
+     tip:"Medos: %40 penetrasyon — kalan %60 ihracatçıya cross-sell fırsatı"},
+    {id:2,lbl:"Belge & Arşiv",c:"#00C9A7",mods:["ArsivSistemi","WebGümrük","Otomail","Cep Gümrük"],pct:31,
+     desc:"Evrak yönetimi, otomatik raporlama ve uzaktan erişim. Dijital dönüşümün ikinci adımı.",
+     tip:"~95 müşteri İthalat/İhracat yapıp ArsivSistemi yok — en hızlı kazanım"},
+    {id:3,lbl:"Mali Entegrasyon",c:"#F97316",mods:["Ön Muhasebe","E-Fatura","E-Defter","G.Muhasebe"],pct:22,
+     desc:"Gümrük-finans entegrasyonu. GİB uyumu ve yasal yükümlülükler tek platformda yönetilir.",
+     tip:"Regülasyon zorunluluğu ile %78 kapsanmamış müşteri — en büyük gelir fırsatı"},
+    {id:4,lbl:"Dijital Dönüşüm",c:"#8B5CF6",mods:["Dinamik Ent","EvrimRPA","VRB/DİİB","Ncts"],pct:8,
+     desc:"Otomasyon, veri entegrasyonu ve ileri analitik. EvrimX geçişinin en doğal köprüsü.",
+     tip:"Şampiyon + Uzman = 23 hedef. Kişisel ROI hesaplama ile sat"}
+  ],
+  campaigns:[
+    {pr:1,nm:"Arşiv Tamamlama",desc:"İthalat/İhracat var, ArsivSistemi yok. E-posta kampanyası.",tgt:"~95 müşteri",c:"#4B9FE1"},
+    {pr:2,nm:"Mali Entegrasyon",desc:"E-Fatura/E-Arşiv henüz almayan firmalar. GİB uyum odaklı.",tgt:"~105 müşteri",c:"#F97316"},
+    {pr:3,nm:"Medos Genişletme",desc:"İhracat var, Medos yok. AB menşe belgesi kolaylığı.",tgt:"~41 müşteri",c:"#00C9A7"},
+    {pr:4,nm:"Otomasyon Paketi",desc:"Şampiyon + Uzman için RPA, Beyanname API, Ncts paketi.",tgt:"23 müşteri",c:"#8B5CF6"},
+    {pr:5,nm:"EvrimX Pilot",desc:"Şampiyon segment Q2 2026 pilot başlatma hedefi.",tgt:"9 müşteri",c:"#FBBF24"}
+  ],
+  evrimx:[
+    {n:"TÜRK HAVA YOLLARI",s:"Savunma & Havacılık",p:8,u:133,pr:"Öncelik 1"},
+    {n:"ARÇELİK A.Ş.",s:"Teknoloji & Elektronik",p:12,u:41,pr:"Öncelik 1"},
+    {n:"ÇINAR GÜM.MÜŞ.",s:"Gümrük Müşavirliği",p:17,u:117,pr:"Öncelik 2"},
+    {n:"TOFAŞ A.Ş.",s:"Otomotiv & Yan Sanayi",p:8,u:25,pr:"Öncelik 2"},
+    {n:"ERKUL KOZMETİK",s:"Tüketici Ürünleri & FMCG",p:5,u:16,pr:"Öncelik 2"},
+    {n:"ADATECH GLOBAL",s:"Lojistik & Taşımacılık",p:9,u:17,pr:"Öncelik 3"},
+    {n:"GÜMÜŞ TİC.",s:"Dış Ticaret & Diğer",p:7,u:13,pr:"Öncelik 3"},
+    {n:"TUSAŞ",s:"Savunma & Havacılık",p:7,u:11,pr:"Öncelik 3"},
+    {n:"BOTAŞ",s:"Enerji & Madencilik",p:5,u:10,pr:"Öncelik 3"}
+  ]
+};
+
+// Product portfolio data: pen=penetration%, rev=revenue potential 1-10
+const PRODS = [
+  // Temel Gümrükleme
+  {n:"İhracat",       g:"Temel Gümrükleme",   pen:64.2, rev:8, c:"#4B9FE1"},
+  {n:"İthalat",       g:"Temel Gümrükleme",   pen:70.1, rev:8, c:"#4B9FE1"},
+  {n:"Medos",         g:"Temel Gümrükleme",   pen:40.1, rev:9, c:"#4B9FE1"},
+  {n:"Özet Beyan",    g:"Temel Gümrükleme",   pen:7.3,  rev:3, c:"#4B9FE1"},
+  {n:"Antrepo",       g:"Temel Gümrükleme",   pen:5.1,  rev:3, c:"#4B9FE1"},
+  // Belge & Arşiv
+  {n:"ArsivSistemi",  g:"Belge & Arşiv",      pen:31.4, rev:5, c:"#00C9A7"},
+  {n:"WebGümrük",     g:"Belge & Arşiv",      pen:7.3,  rev:3, c:"#00C9A7"},
+  {n:"Otomail",       g:"Belge & Arşiv",      pen:2.9,  rev:2, c:"#00C9A7"},
+  {n:"Cep Gümrük",    g:"Belge & Arşiv",      pen:2.2,  rev:2, c:"#00C9A7"},
+  // Mali Entegrasyon
+  {n:"Ön Muhasebe",   g:"Mali Entegrasyon",   pen:21.9, rev:6, c:"#F97316"},
+  {n:"E-Fatura",      g:"Mali Entegrasyon",   pen:8.0,  rev:9, c:"#F97316"},
+  {n:"E-Defter",      g:"Mali Entegrasyon",   pen:1.5,  rev:4, c:"#F97316"},
+  {n:"G.Muhasebe",    g:"Mali Entegrasyon",   pen:2.9,  rev:3, c:"#F97316"},
+  // Dijital Dönüşüm
+  {n:"Ncts",          g:"Dijital Dönüşüm",    pen:8.0,  rev:4, c:"#8B5CF6"},
+  {n:"Beyanname API", g:"Dijital Dönüşüm",    pen:3.6,  rev:7, c:"#8B5CF6"},
+  {n:"Veri Birleştirme",g:"Dijital Dönüşüm", pen:4.4,  rev:4, c:"#8B5CF6"},
+  {n:"EvrimRPA",      g:"Dijital Dönüşüm",    pen:0.7,  rev:6, c:"#8B5CF6"},
+  {n:"Dinamik Ent",   g:"Dijital Dönüşüm",    pen:0.7,  rev:5, c:"#8B5CF6"},
+  {n:"VRB/DİİB",      g:"Dijital Dönüşüm",    pen:2.2,  rev:4, c:"#8B5CF6"},
+];
+
+const CUST=[{"s":"Dış Ticaret & Diğer","n":"ROYAL GLOBAL DIŞ TİCARET LTD ŞTİ","p":11,"seg":"Uzman"},{"s":"Dış Ticaret & Diğer","n":"GÜMÜŞ TİC. MUSTAFA SABRİ GUMUS","p":7,"seg":"Şampiyon"},{"s":"Dış Ticaret & Diğer","n":"ALMANARA DIŞ TİCARET LİMİTED ŞİRKETİ","p":5,"seg":"Uzman"},{"s":"Dış Ticaret & Diğer","n":"YASA DANIŞMANLIK DIŞ TİC.LTD.ŞTİ.","p":4,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"KUBA DIŞ TİCARET - TEKS. GIDA ELEK…","p":4,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"ALIOTH TICARET LIMITED SIRKETI","p":3,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"DİLER HOLDİNG A.Ş.","p":3,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"HY GRUP DIŞ TİCARET HALIL YILMAZ","p":3,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"IBRAHIM ÖZDEMIR SAN.VE TİC.LTD.ŞTİ.","p":3,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"MEGA DANIŞMANLIK TEMSİLCİLİK DIŞ TİC…","p":3,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"ASC DIŞ TİCARET İTHALAT NAKLİYAT","p":2,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"AYHAN BUDAK","p":2,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"DATEKS GLOBAL DIŞ TİCARET LTD.","p":2,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"ERDEM İÇ VE DIŞ TİC.LTD.ŞTİ.","p":2,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"Gürmen Giyim San.Tic.AŞ.","p":2,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"MATİAT DIŞ TİC.LTD.ŞTİ","p":2,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"UGURYAGMUR","p":2,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"BAHATTİN GÜLTEKİN","p":1,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"Dinamik Rulman San. ve Tic. A.S.","p":1,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"GÜLTEKİNLER İTH. İHR. SINIR TİC.","p":1,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"İNNOVATİON DIŞ TİCARET LİMİTED","p":1,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"KICRİ DIŞ TİCARET A.Ş","p":1,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"MAR-SOY DIŞ TİC.LTD.ŞTİ","p":1,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"MASKAR İNŞAAT OTOMOTİV TEKSTİL","p":1,"seg":"Büyüme Adayı"},{"s":"Dış Ticaret & Diğer","n":"Migiboy tekstil san tic Aş","p":1,"seg":"Büyüme Adayı"},{"s":"Tekstil & Hazır Giyim","n":"EDIRNE GIYIM SANAYİ ANONİM ŞİRKETİ","p":5,"seg":"Uzman"},{"s":"Tekstil & Hazır Giyim","n":"ÖZAK TEKSTİL KONFEK.SAN.VE TİC. A.Ş.","p":5,"seg":"Uzman"},{"s":"Tekstil & Hazır Giyim","n":"HÜNER NANO TEKSTİL SANAYİ A.Ş.","p":4,"seg":"Büyüme Adayı"},{"s":"Tekstil & Hazır Giyim","n":"SYSTEM DENİM PAZARLAMA A.Ş","p":4,"seg":"Büyüme Adayı"},{"s":"Tekstil & Hazır Giyim","n":"BEYPA DIŞ TİC. VE TEKSTİL SAN. A.Ş.","p":3,"seg":"Büyüme Adayı"},{"s":"Tekstil & Hazır Giyim","n":"BİLKONT DIŞ TİC.VE TEKSTİL SAN.A.Ş.","p":3,"seg":"Büyüme Adayı"},{"s":"Tekstil & Hazır Giyim","n":"CONFETTİ TEKSTİL SAN. VE DIŞ TİC.","p":3,"seg":"Büyüme Adayı"},{"s":"Tekstil & Hazır Giyim","n":"GELAL ÇORAP SANAYİ VE TİCARET A.Ş.","p":3,"seg":"Büyüme Adayı"},{"s":"Tekstil & Hazır Giyim","n":"AZRA KUMAŞ VE AYAKKABI SAN DIŞ TİC.","p":3,"seg":"Büyüme Adayı"},{"s":"Tekstil & Hazır Giyim","n":"OTTOMAN BOYA APRE İNŞAAT TEKSTİL","p":3,"seg":"Büyüme Adayı"},{"s":"Tekstil & Hazır Giyim","n":"OZANTEKS TEKSTİL SAN.VE TİC.A.Ş","p":2,"seg":"Büyüme Adayı"},{"s":"Tekstil & Hazır Giyim","n":"SOKTAS","p":2,"seg":"Büyüme Adayı"},{"s":"Tekstil & Hazır Giyim","n":"DRC KUMAŞÇILIK SANAYİ VE TİCARET","p":1,"seg":"Büyüme Adayı"},{"s":"İnşaat & Yapı Malzemeleri","n":"KASTAMONU ENT.AĞAÇ SAN.TİC.A.Ş.","p":4,"seg":"Büyüme Adayı"},{"s":"İnşaat & Yapı Malzemeleri","n":"SEJA CAM İNŞAAT NAKLİYAT TURİZM","p":4,"seg":"Büyüme Adayı"},{"s":"İnşaat & Yapı Malzemeleri","n":"ANATOLİA DOĞAL TAŞ SERAMİK A.Ş.","p":3,"seg":"Büyüme Adayı"},{"s":"İnşaat & Yapı Malzemeleri","n":"GÖK YAPI SANAYİ VE TİCARET A.Ş.","p":2,"seg":"Büyüme Adayı"},{"s":"İnşaat & Yapı Malzemeleri","n":"MCK PVC AKSESUARLARI SAN. TİC.","p":2,"seg":"Büyüme Adayı"},{"s":"İnşaat & Yapı Malzemeleri","n":"TERRA DIŞ TİC. VE İNŞ. SAN. LTD.","p":2,"seg":"Büyüme Adayı"},{"s":"İnşaat & Yapı Malzemeleri","n":"BİBEROĞLU INŞAAT NALB.ITH.IHR.SAN","p":1,"seg":"Büyüme Adayı"},{"s":"İnşaat & Yapı Malzemeleri","n":"CONUS YAPI MALZEMELERI SAN. VE TİC.","p":1,"seg":"Büyüme Adayı"},{"s":"İnşaat & Yapı Malzemeleri","n":"EUROPEN ENDÜSTRİ İNŞAAT SANAYİ","p":1,"seg":"Büyüme Adayı"},{"s":"İnşaat & Yapı Malzemeleri","n":"YAMAKOĞLU İNŞAAT TAH. VE DIŞ. TİC.","p":1,"seg":"Büyüme Adayı"},{"s":"İnşaat & Yapı Malzemeleri","n":"ELKAYAN İNTERNATİONAL PVC AKSESUAR","p":0,"seg":"Büyüme Adayı"},{"s":"Tüketici Ürünleri & FMCG","n":"ERKUL KOZMETİK SAN VE TİC. A.Ş.","p":5,"seg":"Şampiyon"},{"s":"Tüketici Ürünleri & FMCG","n":"DEFACTO A.Ş","p":3,"seg":"Büyüme Adayı"},{"s":"Tüketici Ürünleri & FMCG","n":"EVYAP SABUN YAĞ GLİSERİN SAN.A.Ş.","p":3,"seg":"Büyüme Adayı"},{"s":"Tüketici Ürünleri & FMCG","n":"TAM HANGERS TK ASKI SANAYİ","p":3,"seg":"Büyüme Adayı"},{"s":"Tüketici Ürünleri & FMCG","n":"AR KAĞIT KOZMETİK SANAYİ","p":2,"seg":"Büyüme Adayı"},{"s":"Tüketici Ürünleri & FMCG","n":"MAPA MOBİLYA VE AKSESUAR PAZARLAMA","p":2,"seg":"Çekirdek Kullanıcı"},{"s":"Tüketici Ürünleri & FMCG","n":"VALMED EZCA DEPOSU SAN TİC A.Ş","p":2,"seg":"Büyüme Adayı"},{"s":"Tüketici Ürünleri & FMCG","n":"ÇİLEK A.Ş.","p":1,"seg":"Büyüme Adayı"},{"s":"Tüketici Ürünleri & FMCG","n":"SOLGAR VİTAMİN VE SAĞLIK ÜRÜNLERİ","p":1,"seg":"Büyüme Adayı"},{"s":"Enerji & Madencilik","n":"BOTAŞ BORU HATLARI İLE PETROL TAŞIM.","p":5,"seg":"Şampiyon"},{"s":"Enerji & Madencilik","n":"ETİ MADEN İŞLETMELERI GENEL MÜDÜRL.","p":4,"seg":"Çekirdek Kullanıcı"},{"s":"Enerji & Madencilik","n":"TÜRKİYE PETROL RAFİNERİLERİ A.Ş","p":3,"seg":"Çekirdek Kullanıcı"},{"s":"Enerji & Madencilik","n":"AKDENİZ MİNERAL KAYNAKLARI A.S.","p":2,"seg":"Büyüme Adayı"},{"s":"Enerji & Madencilik","n":"AYGAZ A.Ş.","p":2,"seg":"Büyüme Adayı"},{"s":"Enerji & Madencilik","n":"SÜPER ENERJİ MADENCİLİK İNŞ SAN","p":2,"seg":"Büyüme Adayı"},{"s":"Enerji & Madencilik","n":"TÜRKİYE TAŞKÖMÜRÜ KURUMU","p":2,"seg":"Büyüme Adayı"},{"s":"Enerji & Madencilik","n":"CW ENERJİ MÜHENDİSLİK TİCARET","p":1,"seg":"Büyüme Adayı"},{"s":"Metal & Çelik","n":"EFESAN DEMİR SANAYİ VE TİCARET A.Ş.","p":6,"seg":"Uzman"},{"s":"Metal & Çelik","n":"SARITAŞ ÇELİK SAN VE TİC A.Ş","p":6,"seg":"Uzman"},{"s":"Metal & Çelik","n":"TOSÇELİK PROFİL VE SAÇ END A.Ş","p":6,"seg":"Uzman"},{"s":"Metal & Çelik","n":"MMK METALURJİ SAN.TİC.VE LİMAN","p":5,"seg":"Uzman"},{"s":"Metal & Çelik","n":"BURTAŞ PASLANMAZ HİJ. END. ÜR. SAN.","p":4,"seg":"Büyüme Adayı"},{"s":"Metal & Çelik","n":"BORSAN KABLO ELEKTRİK AYDINLATMA","p":3,"seg":"Çekirdek Kullanıcı"},{"s":"Metal & Çelik","n":"BOSKAY METAL SAN VE TİC.LTD.ŞTİ","p":2,"seg":"Büyüme Adayı"},{"s":"Metal & Çelik","n":"FIGABARA ELEKTRİK ELEKTRONİK MAKİNE","p":2,"seg":"Büyüme Adayı"},{"s":"Lojistik & Taşımacılık","n":"ADATECH GLOBAL LOJİSTİK LTD. ŞTİ.","p":9,"seg":"Şampiyon"},{"s":"Lojistik & Taşımacılık","n":"PORT DENİZ LOJİSTİK A.Ş","p":5,"seg":"Uzman"},{"s":"Lojistik & Taşımacılık","n":"Çağberk Lojistik Paz. İç ve Dış Tic.","p":4,"seg":"Büyüme Adayı"},{"s":"Lojistik & Taşımacılık","n":"EMR GLOBAL İTHALAT İHRACAT LOJİSTİK","p":3,"seg":"Büyüme Adayı"},{"s":"Lojistik & Taşımacılık","n":"DMT DİGİTAL MOMENTUM TRANSPORT","p":2,"seg":"Büyüme Adayı"},{"s":"Lojistik & Taşımacılık","n":"CAPİTAL ULUSLARARASI TASIMACILIK","p":1,"seg":"Büyüme Adayı"},{"s":"Lojistik & Taşımacılık","n":"S S 200 NOLU YEŞİLKÖY HAVALİMANI","p":1,"seg":"Büyüme Adayı"},{"s":"Teknoloji & Elektronik","n":"ARÇELIK A.Ş.","p":12,"seg":"Şampiyon"},{"s":"Teknoloji & Elektronik","n":"AZTEK TEKNOLOJİ ÜRN.TİC. A.Ş","p":3,"seg":"Büyüme Adayı"},{"s":"Teknoloji & Elektronik","n":"GENERAL MOBİLE TEKNOLOJİ ÜRÜNLERİ","p":3,"seg":"Büyüme Adayı"},{"s":"Teknoloji & Elektronik","n":"ELECTROCRAFT TELEFON VE AKSESUARLAR","p":2,"seg":"Büyüme Adayı"},{"s":"Teknoloji & Elektronik","n":"ARZUM ELEKTRİKLİ EV ALETLERİ","p":1,"seg":"Büyüme Adayı"},{"s":"Teknoloji & Elektronik","n":"BİN ULAŞIM VE AKILLI ŞEHİR TEKNO.","p":1,"seg":"Büyüme Adayı"},{"s":"Teknoloji & Elektronik","n":"TEKNİK AKSESUAR TELEFON İLETİŞİM","p":1,"seg":"Büyüme Adayı"},{"s":"Gıda & Tarım","n":"YAYLA AGRO SAN.VE NAK A.Ş","p":7,"seg":"Uzman"},{"s":"Gıda & Tarım","n":"ARMA TOPTAN GIDA MOBİLYA İNŞ.OTO.","p":2,"seg":"Büyüme Adayı"},{"s":"Gıda & Tarım","n":"SABIRLAR FINDIK İHR. LTD.ŞTİ.","p":2,"seg":"Büyüme Adayı"},{"s":"Gıda & Tarım","n":"ŞİMŞEK BİSKÜVİ VE GIDA SANAYİ A.Ş.","p":2,"seg":"Büyüme Adayı"},{"s":"Gıda & Tarım","n":"SİN GIDA SANAYİ VE TİCARET LTD.","p":2,"seg":"Büyüme Adayı"},{"s":"Gıda & Tarım","n":"TURGUT KARD. GIDA İTH.İHR.","p":2,"seg":"Büyüme Adayı"},{"s":"Gıda & Tarım","n":"YÖRESEL TÜKETİM MALLARI GIDA SAN.","p":2,"seg":"Büyüme Adayı"},{"s":"Otomotiv & Yan Sanayi","n":"SAMPA OTOMOTİV SANAYİ VE TİCARET","p":9,"seg":"Uzman"},{"s":"Otomotiv & Yan Sanayi","n":"TOFAŞ A.Ş","p":8,"seg":"Şampiyon"},{"s":"Otomotiv & Yan Sanayi","n":"DİNİZ ADIENT OTO DONANIM SAN.","p":4,"seg":"Büyüme Adayı"},{"s":"Otomotiv & Yan Sanayi","n":"ASHAB OTOMOTİV MAKİNE VE TAŞ.İTH.","p":3,"seg":"Büyüme Adayı"},{"s":"Otomotiv & Yan Sanayi","n":"EKOL OTOMOTİV SAN. VE TİC. A.Ş.","p":2,"seg":"Büyüme Adayı"},{"s":"Otomotiv & Yan Sanayi","n":"MAN TÜRKİYE A.Ş","p":2,"seg":"Büyüme Adayı"},{"s":"Otomotiv & Yan Sanayi","n":"DİNAMİK OTOMOTİV GIDA TEKSTİL","p":1,"seg":"Büyüme Adayı"},{"s":"Gümrük Müşavirliği","n":"ÇINAR GÜM.MÜŞ.LTD.ŞTİ","p":17,"seg":"Şampiyon"},{"s":"Gümrük Müşavirliği","n":"EGEDE ZİRVE GÜMRÜK MÜŞAVİRLİĞİ A.Ş","p":8,"seg":"Uzman"},{"s":"Gümrük Müşavirliği","n":"OKUR GRUP GÜMRÜK MÜŞAVİRLİĞİ","p":8,"seg":"Uzman"},{"s":"Gümrük Müşavirliği","n":"BSG DANIŞMANLIK VE GÜMRÜK MÜŞAVİRL.","p":5,"seg":"Uzman"},{"s":"Gümrük Müşavirliği","n":"DÖRTEL GÜMRÜK MÜŞ.A.Ş","p":2,"seg":"Büyüme Adayı"},{"s":"Gümrük Müşavirliği","n":"ADNAN KAVAŞOĞLU AK DANIŞMANLIK","p":1,"seg":"Büyüme Adayı"},{"s":"Kimya & Plastik","n":"ADOKİM KİMYA SANAYİ VE TİCARET A.Ş.","p":4,"seg":"Büyüme Adayı"},{"s":"Kimya & Plastik","n":"KTM KİMYEVİ MAD.İTH.İHR.SAN.VE TİC.","p":3,"seg":"Büyüme Adayı"},{"s":"Kimya & Plastik","n":"PLASTAY KİMYA SAN.VE TİC.A.Ş","p":3,"seg":"Büyüme Adayı"},{"s":"Kimya & Plastik","n":"PLASMAR PLASTİK VE KİMYA SANAYİ","p":2,"seg":"Büyüme Adayı"},{"s":"Kimya & Plastik","n":"YILBOR BORU PLASTİK PETROL SAN.","p":2,"seg":"Büyüme Adayı"},{"s":"Kimya & Plastik","n":"BASF TÜRK KİMYA SAN VE TİC.LTD.ŞTİ","p":1,"seg":"Büyüme Adayı"},{"s":"Denizcilik & Liman","n":"TST ORGEM DENİZCİLİK VE GEMİ HİZM.","p":4,"seg":"Büyüme Adayı"},{"s":"Denizcilik & Liman","n":"ARIA KUMANYACILIK DEN.İTH İHR","p":3,"seg":"Büyüme Adayı"},{"s":"Denizcilik & Liman","n":"ATLAS ULUSLARARASI KUMANYACILIK A.Ş.","p":3,"seg":"Büyüme Adayı"},{"s":"Denizcilik & Liman","n":"BUTA GEMİCİLİK VE DENİZCİLİK LTD.","p":2,"seg":"Büyüme Adayı"},{"s":"Denizcilik & Liman","n":"HERMES DENİZCİLİK VE TİCARET A.Ş.","p":1,"seg":"Büyüme Adayı"},{"s":"Denizcilik & Liman","n":"ONURSAN GEMİ İNŞA ONARIM VE TİCARET","p":1,"seg":"Büyüme Adayı"},{"s":"Makine & Ekipman","n":"CNC İLERİ TEKNOLOJİ MÜHENDİSLİK","p":3,"seg":"Büyüme Adayı"},{"s":"Makine & Ekipman","n":"DAIKIN ISITMA VE SOĞUTMA SİSTEMLERİ","p":2,"seg":"Büyüme Adayı"},{"s":"Makine & Ekipman","n":"VİG MAKİNA SANAYİ VE TİCARET A.Ş.","p":2,"seg":"Büyüme Adayı"},{"s":"Makine & Ekipman","n":"TEKSAN JENARATÖR ELK.SAN.TİC.A.Ş.","p":2,"seg":"Büyüme Adayı"},{"s":"Makine & Ekipman","n":"AKSA JENERATÖR SAN.A.Ş","p":1,"seg":"Büyüme Adayı"},{"s":"Savunma & Havacılık","n":"TÜRK HAVA YOLLARI","p":8,"seg":"Şampiyon"},{"s":"Savunma & Havacılık","n":"TUSAŞ-TÜRK HAVACILIK VE UZAY SANAYİİ","p":7,"seg":"Şampiyon"},{"s":"Savunma & Havacılık","n":"GİMAŞ TEDARİK VE DAĞ.PAZ.TİC.A.Ş","p":4,"seg":"Büyüme Adayı"},{"s":"Savunma & Havacılık","n":"PEGASUS HAVA TAŞIMACILIĞI A.Ş.","p":2,"seg":"Büyüme Adayı"},{"s":"Kamu & NGO","n":"TÜBİTAK BİLİŞİM VE BİLGİ GÜVENLİĞİ","p":3,"seg":"Büyüme Adayı"},{"s":"Kamu & NGO","n":"İHH İNSAN HAK VE HÜRRİYETLERİ","p":2,"seg":"Büyüme Adayı"},{"s":"Kamu & NGO","n":"TÜRKİYE KIZILAY DERNEĞİ","p":1,"seg":"Büyüme Adayı"},{"s":"Kamu & NGO","n":"TÜRKİYE İHRACATÇILAR MECLİSİ","p":1,"seg":"Büyüme Adayı"},{"s":"Mücevher & Aksesuar","n":"PİR-İNCİ BİJUTERİ İMALATI SAN.TİC.","p":4,"seg":"Büyüme Adayı"},{"s":"Mücevher & Aksesuar","n":"Saat ve Saat san. Tic. A.ş.","p":3,"seg":"Büyüme Adayı"},{"s":"Mücevher & Aksesuar","n":"AHLATÇI KUYUMCULUK SANAYİ","p":1,"seg":"Büyüme Adayı"}];
+
+const SC = {"Dış Ticaret & Diğer":"#4B9FE1","Tekstil & Hazır Giyim":"#00C9A7","İnşaat & Yapı Malzemeleri":"#FF6B35","Tüketici Ürünleri & FMCG":"#8B5CF6","Metal & Çelik":"#F97316","Enerji & Madencilik":"#FBBF24","Teknoloji & Elektronik":"#F87171","Gıda & Tarım":"#60A5FA","Otomotiv & Yan Sanayi":"#A78BFA","Lojistik & Taşımacılık":"#2DD4BF","Denizcilik & Liman":"#FB923C","Gümrük Müşavirliği":"#E879F9","Kimya & Plastik":"#4ADE80","Makine & Ekipman":"#F59E0B","Savunma & Havacılık":"#38BDF8","Kamu & NGO":"#A3E635","Mücevher & Aksesuar":"#FCD34D"};
+const GC = {"Temel Gümrükleme":"#4B9FE1","Belge & Arşiv":"#00C9A7","Mali Entegrasyon":"#F97316","Dijital Dönüşüm":"#8B5CF6"};
+const SEGC = {"Şampiyon":"#FBBF24","Uzman":"#00C9A7","Çekirdek Kullanıcı":"#FF6B35","Büyüme Adayı":"#4A6480"};
+
+// ─── TOOLTIP ─────────────────────────────────────────────────────────────────
+const tt = document.getElementById('tt');
+function tip(e,html){tt.innerHTML=html;tt.style.display='block';mv(e)}
+function mv(e){tt.style.left=(e.clientX+14)+'px';tt.style.top=(e.clientY-8)+'px'}
+function ht(){tt.style.display='none'}
+
+// ─── NAV ─────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-item').forEach(el=>{
+  el.addEventListener('click',()=>{
+    document.getElementById(el.dataset.target).scrollIntoView({behavior:'smooth',block:'start'});
+  });
+});
+const io = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+      const ni=document.querySelector(`.nav-item[data-target="${e.target.id}"]`);
+      if(ni)ni.classList.add('active');
+    }
+  });
+},{threshold:.2});
+document.querySelectorAll('section[id]').forEach(s=>io.observe(s));
+
+// ─── KPIs ────────────────────────────────────────────────────────────────────
+function kpis(){
+  const data=[
+    {v:"137",l:"DT Müşterisi",s:"Temsilname segmenti",c:"#4B9FE1",i:"🏢"},
+    {v:"3.1",l:"Ort. Ürün/Müşteri",s:"Medyan: 2 ürün",c:"#00C9A7",i:"📦"},
+    {v:"%70",l:"İhracat Penetr.",s:"En yüksek modül",c:"#F97316",i:"📈"},
+    {v:"23",l:"Premium Segment",s:"5+ ürün kullanan",c:"#8B5CF6",i:"⭐"},
+    {v:"9",l:"Şampiyon Müşteri",s:"EvrimX öncelikli",c:"#FBBF24",i:"🏆"}
+  ];
+  const el=document.getElementById('kpis');
+  data.forEach(k=>{
+    el.innerHTML+=`<div class="kpi" style="--kc:${k.c}">
+      <div class="kpi-lbl">${k.l}</div>
+      <div class="kpi-val">${k.v}</div>
+      <div class="kpi-sub">${k.s}</div>
+      <div class="kpi-icon">${k.i}</div>
+    </div>`;
+  });
+}
+
+// ─── SECTOR CUSTOMER TABLE ───────────────────────────────────────────────────
+function sectorCustTable(){
+  const sc2={'Şampiyon':'b-gold','Uzman':'b-teal','Çekirdek Kullanıcı':'b-orange','Büyüme Adayı':'b-gray'};
+  let html=`<thead><tr>
+    <th style="width:200px">Sektör</th>
+    <th>Müşteri</th>
+    <th style="width:60px;text-align:center">Ürün</th>
+    <th style="width:130px">Segment</th>
+  </tr></thead><tbody>`;
+  let prevSec='';
+  CUST.forEach(r=>{
+    const secHdr=r.s!==prevSec;
+    if(secHdr){
+      const col=SC[r.s]||'#4B9FE1';
+      const cnt=CUST.filter(x=>x.s===r.s).length;
+      html+=`<tr style="background:rgba(255,255,255,.025)">
+        <td colspan="4" style="padding:8px 16px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${col}">
+          <span style="display:inline-flex;align-items:center;gap:8px">
+            <span style="width:7px;height:7px;border-radius:50%;background:${col};flex-shrink:0"></span>
+            ${r.s} <span style="font-weight:500;color:var(--text3);text-transform:none;letter-spacing:0">${cnt} müşteri</span>
+          </span>
+        </td>
+      </tr>`;
+      prevSec=r.s;
+    }
+    html+=`<tr onmouseenter="tip(event,'<strong>${r.n}</strong><br>${r.s}<br>${r.p} ürün · ${r.seg}')" onmousemove="mv(event)" onmouseleave="ht()" style="cursor:default">
+      <td></td>
+      <td class="nm" style="padding-left:28px">${r.n}</td>
+      <td style="text-align:center;font-weight:700;color:var(--blue)">${r.p}</td>
+      <td><span class="badge ${sc2[r.seg]||'b-gray'}" style="font-size:10px">${r.seg}</span></td>
+    </tr>`;
+  });
+  html+='</tbody>';
+  document.getElementById('sector-cust-tbl').innerHTML=html;
+}
+
+// ─── TREEMAP ─────────────────────────────────────────────────────────────────
+function treemap(){
+  const el=document.getElementById('treemap');
+  const W=el.parentElement.clientWidth-64, H=400;
+  el.setAttribute('width',W); el.setAttribute('height',H);
+  const svg=d3.select('#treemap');
+  const root=d3.hierarchy({name:'root',children:Object.entries(D.sectors).map(([k,v])=>({name:k,value:v}))})
+    .sum(d=>d.value).sort((a,b)=>b.value-a.value);
+  d3.treemap().size([W,H]).paddingOuter(5).paddingInner(3).round(true)(root);
+  const g=svg.selectAll('g').data(root.leaves()).enter().append('g')
+    .attr('transform',d=>`translate(${d.x0},${d.y0})`).style('cursor','pointer');
+  g.append('rect')
+    .attr('width',d=>Math.max(0,d.x1-d.x0)).attr('height',d=>Math.max(0,d.y1-d.y0))
+    .attr('rx',10).attr('fill',d=>SC[d.data.name]||'#4B9FE1').attr('opacity',.82)
+    .on('mouseover',function(e,d){d3.select(this).attr('opacity',1);tip(e,`<strong>${d.data.name}</strong><br>${d.data.value} müşteri (${(d.data.value/137*100).toFixed(0)}%)`)})
+    .on('mousemove',mv).on('mouseout',function(){d3.select(this).attr('opacity',.82);ht()});
+  g.filter(d=>(d.x1-d.x0)>70&&(d.y1-d.y0)>40).append('text')
+    .attr('x',d=>(d.x1-d.x0)/2).attr('y',d=>(d.y1-d.y0)/2-8)
+    .attr('text-anchor','middle').attr('fill','white').attr('font-weight','700')
+    .attr('font-size',d=>(d.x1-d.x0)>140?12:10)
+    .text(d=>d.data.name.length>18?d.data.name.slice(0,16)+'…':d.data.name);
+  g.filter(d=>(d.x1-d.x0)>45&&(d.y1-d.y0)>28).append('text')
+    .attr('x',d=>(d.x1-d.x0)/2).attr('y',d=>(d.y1-d.y0)/2+12)
+    .attr('text-anchor','middle').attr('fill','rgba(255,255,255,.75)').attr('font-size',11).attr('font-weight','800')
+    .text(d=>`${d.data.value} (${(d.data.value/137*100).toFixed(0)}%)`);
+}
+
+// ─── DONUT ───────────────────────────────────────────────────────────────────
+function donut(){
+  const el=document.getElementById('donut');
+  const W=Math.min(el.parentElement.clientWidth-40,320), H=270;
+  const cx=W/2, cy=H/2+4;
+  const R=84, iR=52;
+  const svg=d3.select('#donut').attr('width',W).attr('height',H);
+  const g=svg.append('g').attr('transform',`translate(${cx},${cy})`);
+  const segs=Object.entries(D.segments);
+  const total=segs.reduce((s,[,v])=>s+v,0);
+  const pie=d3.pie().value(d=>d[1]).sort(null);
+  const arc=d3.arc().innerRadius(iR).outerRadius(R).cornerRadius(5).padAngle(.03);
+  const arcH=d3.arc().innerRadius(iR).outerRadius(R+10).cornerRadius(5).padAngle(.03);
+  const lineArc=d3.arc().innerRadius(R+5).outerRadius(R+5);
+  const lblArc=d3.arc().innerRadius(R+32).outerRadius(R+32);
+  g.selectAll('path').data(pie(segs)).enter().append('path')
+    .attr('d',arc).attr('fill',d=>SEGC[d.data[0]]).attr('stroke','none').style('cursor','pointer')
+    .on('mouseover',function(e,d){d3.select(this).transition().duration(150).attr('d',arcH);tip(e,`<strong>${d.data[0]}</strong><br>${d.data[1]} müşteri (${(d.data[1]/total*100).toFixed(0)}%)`)})
+    .on('mousemove',mv)
+    .on('mouseout',function(e,d){d3.select(this).transition().duration(150).attr('d',arc);ht()});
+  // center label
+  g.append('text').attr('text-anchor','middle').attr('y',-6).attr('font-size','26').attr('font-weight','900').attr('fill','#EDF2FF').text(total);
+  g.append('text').attr('text-anchor','middle').attr('y',14).attr('font-size','11').attr('fill','#4A6070').text('müşteri');
+  // callout lines
+  g.selectAll('.cl').data(pie(segs)).enter().append('line').attr('class','cl')
+    .attr('x1',d=>lineArc.centroid(d)[0]).attr('y1',d=>lineArc.centroid(d)[1])
+    .attr('x2',d=>lblArc.centroid(d)[0]).attr('y2',d=>lblArc.centroid(d)[1])
+    .attr('stroke',d=>SEGC[d.data[0]]).attr('stroke-width',1.5).attr('opacity',.7);
+  // % text labels
+  g.selectAll('.plab').data(pie(segs)).enter().append('text').attr('class','plab')
+    .attr('x',d=>lblArc.centroid(d)[0]).attr('y',d=>lblArc.centroid(d)[1])
+    .attr('text-anchor',d=>lblArc.centroid(d)[0]>3?'start':lblArc.centroid(d)[0]<-3?'end':'middle')
+    .attr('dominant-baseline','middle')
+    .attr('font-size','11').attr('font-weight','800').attr('fill',d=>SEGC[d.data[0]])
+    .text(d=>`${(d.data[1]/total*100).toFixed(0)}%`);
+  const legend=document.getElementById('seg-legend');
+  legend.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px';
+  segs.forEach(([nm,v])=>{
+    legend.innerHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:10px">
+      <span style="width:10px;height:10px;border-radius:50%;background:${SEGC[nm]};flex-shrink:0"></span>
+      <span style="font-size:12px;color:var(--text2);flex:1">${nm}</span>
+      <span style="font-size:14px;font-weight:800;color:${SEGC[nm]}">${v}</span>
+    </div>`;
+  });
+}
+
+// ─── LOLLIPOP ────────────────────────────────────────────────────────────────
+function lollipop(){
+  const el=document.getElementById('lollipop');
+  const W=el.parentElement.clientWidth-64, H=460;
+  const m={t:16,r:72,b:16,l:160};
+  const iW=W-m.l-m.r, iH=H-m.t-m.b;
+  const svg=d3.select('#lollipop').attr('width',W).attr('height',H);
+  const g=svg.append('g').attr('transform',`translate(${m.l},${m.t})`);
+  const prods=Object.entries(D.pen).sort((a,b)=>b[1]-a[1]);
+  const x=d3.scaleLinear().domain([0,78]).range([0,iW]);
+  const y=d3.scaleBand().domain(prods.map(d=>d[0])).range([0,iH]).padding(.38);
+  const gc=v=>v>40?'#4B9FE1':v>15?'#00C9A7':v>5?'#8B5CF6':'#FF6B35';
+  // grid
+  g.append('g').selectAll('line').data([20,40,60]).enter().append('line')
+    .attr('x1',x).attr('x2',x).attr('y1',0).attr('y2',iH)
+    .attr('stroke','rgba(255,255,255,.05)').attr('stroke-width',1);
+  // tracks
+  g.selectAll('.tr').data(prods).enter().append('line').attr('class','tr')
+    .attr('x1',0).attr('x2',d=>x(d[1])).attr('y1',d=>y(d[0])+y.bandwidth()/2).attr('y2',d=>y(d[0])+y.bandwidth()/2)
+    .attr('stroke',d=>gc(d[1])).attr('stroke-width',2.5).attr('opacity',.3).attr('stroke-linecap','round');
+  // dots
+  g.selectAll('.dt').data(prods).enter().append('circle').attr('class','dt')
+    .attr('cx',d=>x(d[1])).attr('cy',d=>y(d[0])+y.bandwidth()/2).attr('r',7)
+    .attr('fill',d=>gc(d[1])).attr('stroke','var(--bg2)').attr('stroke-width',2).style('cursor','pointer')
+    .on('mouseover',function(e,d){d3.select(this).attr('r',10);tip(e,`<strong>${d[0]}</strong><br>${d[1].toFixed(1)}% penetrasyon<br>${Math.round(d[1]*137/100)} müşteri`)})
+    .on('mousemove',mv).on('mouseout',function(){d3.select(this).attr('r',7);ht()});
+  // value labels
+  g.selectAll('.vl').data(prods).enter().append('text').attr('class','vl')
+    .attr('x',d=>x(d[1])+12).attr('y',d=>y(d[0])+y.bandwidth()/2)
+    .attr('dominant-baseline','middle').attr('font-size','12').attr('font-weight','700').attr('fill',d=>gc(d[1]))
+    .text(d=>`${d[1].toFixed(0)}%`);
+  // y labels
+  g.selectAll('.yl').data(prods).enter().append('text').attr('class','yl')
+    .attr('x',-12).attr('y',d=>y(d[0])+y.bandwidth()/2).attr('text-anchor','end')
+    .attr('dominant-baseline','middle').attr('font-size','12').attr('fill','var(--text2)')
+    .text(d=>d[0]);
+  // group pct cards
+  const vgc=document.getElementById('vg-pct-cards');
+  D.vgs.forEach(v=>{
+    vgc.innerHTML+=`<div class="card" style="text-align:center;padding:20px 16px">
+      <div style="font-size:11px;color:${v.c};font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">${v.lbl}</div>
+      <div style="font-size:36px;font-weight:900;color:${v.c};letter-spacing:-1px">${v.pct}%</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px">mevcut penetrasyon</div>
+    </div>`;
+  });
+}
+
+// ─── SCATTER ─────────────────────────────────────────────────────────────────
+function scatter(){
+  const el=document.getElementById('scatter');
+  const W=el.parentElement.clientWidth-64, H=380;
+  const m={t:20,r:30,b:50,l:55};
+  const iW=W-m.l-m.r, iH=H-m.t-m.b;
+  const svg=d3.select('#scatter').attr('width',W).attr('height',H);
+  const g=svg.append('g').attr('transform',`translate(${m.l},${m.t})`);
+  const xS=d3.scaleLinear().domain([0,18]).range([0,iW]);
+  const yS=d3.scaleLinear().domain([0,140]).range([iH,0]);
+  // quadrant bg
+  [[0,4.5,0,10,'#4A6480'],[4.5,18,0,10,'#00C9A7'],[0,4.5,10,140,'#FF6B35'],[4.5,18,10,140,'#FBBF24']].forEach(([x0,x1,y0,y1,c])=>{
+    g.append('rect').attr('x',xS(x0)).attr('y',yS(y1)).attr('width',xS(x1)-xS(x0)).attr('height',yS(y0)-yS(y1)).attr('fill',c).attr('opacity',.04);
+  });
+  // dividers
+  g.append('line').attr('x1',xS(4.5)).attr('x2',xS(4.5)).attr('y1',0).attr('y2',iH).attr('stroke','rgba(255,255,255,.1)').attr('stroke-dasharray','4,4');
+  g.append('line').attr('x1',0).attr('x2',iW).attr('y1',yS(10)).attr('y2',yS(10)).attr('stroke','rgba(255,255,255,.1)').attr('stroke-dasharray','4,4');
+  // quad labels
+  [['BÜYÜME ADAYI','#4A6480',0.3,3],['UZMAN','#00C9A7',5,3],['ÇEKİRDEK KULLANICI','#FF6B35',0.3,128],['ŞAMPİYON','#FBBF24',5,128]].forEach(([t,c,x,y])=>{
+    g.append('text').attr('x',xS(x)).attr('y',yS(y)).attr('font-size','9').attr('font-weight','700').attr('letter-spacing','1.5').attr('fill',c).attr('opacity',.7).text(t);
+  });
+  // points
+  const rng=d3.randomNormal(0,0.5);
+  g.selectAll('.pt').data(D.top30).enter().append('circle').attr('class','pt')
+    .attr('cx',d=>xS(d.p)+rng()).attr('cy',d=>yS(d.u)+rng()*2).attr('r',7)
+    .attr('fill',d=>SEGC[d.seg]).attr('stroke','var(--bg)').attr('stroke-width',1.5).attr('opacity',.85).style('cursor','pointer')
+    .on('mouseover',function(e,d){d3.select(this).attr('r',11).attr('opacity',1);tip(e,`<strong>${d.n}</strong><br>${d.s}<br>${d.p} ürün · ${d.u} kullanıcı<br><span style="color:${SEGC[d.seg]}">${d.seg}</span>`)})
+    .on('mousemove',mv).on('mouseout',function(){d3.select(this).attr('r',7).attr('opacity',.85);ht()});
+  // axes
+  g.append('g').attr('transform',`translate(0,${iH})`).call(d3.axisBottom(xS).ticks(6))
+    .call(g=>{g.select('.domain').remove();g.selectAll('.tick line').attr('stroke','rgba(255,255,255,.08)');g.selectAll('.tick text').attr('fill','var(--text3)').attr('font-size','11')});
+  g.append('g').call(d3.axisLeft(yS).ticks(5))
+    .call(g=>{g.select('.domain').remove();g.selectAll('.tick line').attr('stroke','rgba(255,255,255,.08)');g.selectAll('.tick text').attr('fill','var(--text3)').attr('font-size','11')});
+  g.append('text').attr('x',iW/2).attr('y',iH+40).attr('text-anchor','middle').attr('font-size','12').attr('fill','var(--text3)').text('Kullanılan Ürün Adedi');
+  g.append('text').attr('transform','rotate(-90)').attr('x',-iH/2).attr('y',-42).attr('text-anchor','middle').attr('font-size','12').attr('fill','var(--text3)').text('Kullanıcı Sayısı');
+  // segment details
+  const det=document.getElementById('seg-details');
+  [{nm:'Şampiyon',ct:9,desc:'5+ ürün & 10+ kullanıcı',str:'EvrimX öncelikli aday. Referans müşteri konumu.',c:'#FBBF24'},
+   {nm:'Uzman',ct:14,desc:'5+ ürün & <10 kullanıcı',str:'Kullanıcı genişletme + premium upsell hedefi.',c:'#00C9A7'},
+   {nm:'Çekirdek Kullanıcı',ct:4,desc:'<5 ürün & 10+ kullanıcı',str:'Ürün genişletme — çok kullanıcı az ürün.',c:'#FF6B35'},
+   {nm:'Büyüme Adayı',ct:110,desc:'<5 ürün & <10 kullanıcı',str:'Temel upsell + aktif kullanım desteği.',c:'#4A6480'}
+  ].forEach(s=>{
+    det.innerHTML+=`<div style="padding:16px;border-radius:14px;background:var(--bg3);margin-bottom:12px;border-left:3px solid ${s.c}">
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+        <span style="font-weight:800;color:${s.c}">${s.nm}</span>
+        <span style="font-size:22px;font-weight:900;color:${s.c}">${s.ct}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:3px">${s.desc}</div>
+      <div style="font-size:12px;color:var(--text2)">${s.str}</div>
+    </div>`;
+  });
+}
+
+// ─── PRODUCT SEGMENTS ────────────────────────────────────────────────────────
+function prodSegs(){
+  const groupOrder=["Temel Gümrükleme","Belge & Arşiv","Mali Entegrasyon","Dijital Dönüşüm"];
+  const container=document.getElementById('prod-group-list');
+
+  // ── 4-col group cards ──
+  groupOrder.forEach(grp=>{
+    const prods=PRODS.filter(p=>p.g===grp).sort((a,b)=>b.pen-a.pen);
+    const col=prods[0].c;
+    let html=`<div class="card" style="padding:22px 24px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:${col};margin-bottom:14px;display:flex;align-items:center;gap:8px">
+        <span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>${grp}
+      </div>`;
+    prods.forEach(p=>{
+      const barW=Math.max(1,Math.round(p.pen/75*100));
+      html+=`<div style="margin-bottom:9px;cursor:default"
+        onmouseenter="tip(event,'<strong>${p.n}</strong><br>${p.pen}% penetrasyon · ${Math.round(p.pen*137/100)} müşteri<br><span style=\\'font-size:11px;color:#94A8C4\\'>Gelir potansiyeli: ${p.rev}/10</span>')"
+        onmousemove="mv(event)" onmouseleave="ht()">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+          <span style="font-size:12px;color:var(--text2)">${p.n}</span>
+          <span style="font-size:12px;font-weight:800;color:${col};margin-left:8px;white-space:nowrap">${p.pen}%</span>
+        </div>
+        <div style="background:var(--bg4);border-radius:4px;height:5px;overflow:hidden">
+          <div style="width:${barW}%;height:100%;background:${col};border-radius:4px;opacity:.82;transition:width .3s"></div>
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+    container.innerHTML+=html;
+  });
+
+  // ── Full-width scatter matrix ──
+  const el=document.getElementById('prod-matrix');
+  const W=el.parentElement.clientWidth-64, H=480;
+  el.setAttribute('width',W); el.setAttribute('height',H);
+  const m={t:20,r:30,b:48,l:48};
+  const iW=W-m.l-m.r, iH=H-m.t-m.b;
+  const svg=d3.select('#prod-matrix');
+  const g=svg.append('g').attr('transform',`translate(${m.l},${m.t})`);
+  const xS=d3.scaleLinear().domain([0,75]).range([0,iW]);
+  const yS=d3.scaleLinear().domain([0,10]).range([iH,0]);
+  // subtle quadrant backgrounds — no text labels
+  [[0,35,0,5,'#FF6B35'],[35,75,0,5,'#FBBF24'],[0,35,5,10,'#4B9FE1'],[35,75,5,10,'#F97316']].forEach(([x0,x1,y0,y1,c])=>{
+    g.append('rect').attr('x',xS(x0)).attr('y',yS(y1)).attr('width',xS(x1)-xS(x0)).attr('height',yS(y0)-yS(y1)).attr('fill',c).attr('opacity',.04);
+  });
+  // grid lines
+  [20,40,60].forEach(v=>{g.append('line').attr('x1',xS(v)).attr('x2',xS(v)).attr('y1',0).attr('y2',iH).attr('stroke','rgba(255,255,255,.05)')});
+  [2,4,6,8].forEach(v=>{g.append('line').attr('x1',0).attr('x2',iW).attr('y1',yS(v)).attr('y2',yS(v)).attr('stroke','rgba(255,255,255,.05)')});
+  // dividers
+  g.append('line').attr('x1',xS(35)).attr('x2',xS(35)).attr('y1',0).attr('y2',iH).attr('stroke','rgba(255,255,255,.12)').attr('stroke-dasharray','5,3');
+  g.append('line').attr('x1',0).attr('x2',iW).attr('y1',yS(5)).attr('y2',yS(5)).attr('stroke','rgba(255,255,255,.12)').attr('stroke-dasharray','5,3');
+  // dots
+  g.selectAll('.pp').data(PRODS).enter().append('circle').attr('class','pp')
+    .attr('cx',d=>xS(d.pen)).attr('cy',d=>yS(d.rev)).attr('r',8)
+    .attr('fill',d=>d.c).attr('stroke','var(--bg)').attr('stroke-width',1.5).attr('opacity',.88).style('cursor','pointer')
+    .on('mouseover',function(e,d){d3.select(this).attr('r',12).attr('opacity',1);tip(e,`<strong>${d.n}</strong><br><span style="color:${d.c}">${d.g}</span><br>Penetrasyon: ${d.pen}%<br>Gelir Potansiyeli: ${d.rev}/10`)})
+    .on('mousemove',mv).on('mouseout',function(){d3.select(this).attr('r',8).attr('opacity',.88);ht()});
+  // product name labels — only for notable ones to avoid clutter
+  g.selectAll('.pl').data(PRODS.filter(p=>p.pen>12||p.rev>=7)).enter().append('text').attr('class','pl')
+    .attr('x',d=>xS(d.pen)+(d.pen>60?-12:11)).attr('y',d=>yS(d.rev)+4)
+    .attr('text-anchor',d=>d.pen>60?'end':'start')
+    .attr('font-size','11').attr('fill','var(--text2)').text(d=>d.n);
+  // axes
+  g.append('g').attr('transform',`translate(0,${iH})`).call(d3.axisBottom(xS).ticks(6).tickFormat(d=>d+'%'))
+    .call(ax=>{ax.select('.domain').remove();ax.selectAll('.tick line').remove();ax.selectAll('.tick text').attr('fill','var(--text3)').attr('font-size','11')});
+  g.append('g').call(d3.axisLeft(yS).ticks(5))
+    .call(ax=>{ax.select('.domain').remove();ax.selectAll('.tick line').remove();ax.selectAll('.tick text').attr('fill','var(--text3)').attr('font-size','11')});
+  g.append('text').attr('x',iW/2).attr('y',iH+38).attr('text-anchor','middle').attr('font-size','12').attr('fill','var(--text3)').text('Mevcut Penetrasyon (%)');
+  g.append('text').attr('transform','rotate(-90)').attr('x',-iH/2).attr('y',-36).attr('text-anchor','middle').attr('font-size','12').attr('fill','var(--text3)').text('Gelir Potansiyeli');
+  // legend
+  const leg=document.getElementById('prod-matrix-legend');
+  groupOrder.forEach(grp=>{
+    const col=PRODS.find(p=>p.g===grp).c;
+    leg.innerHTML+=`<div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2)">
+      <span style="width:11px;height:11px;border-radius:50%;background:${col};flex-shrink:0"></span>${grp}
+    </div>`;
+  });
+}
+
+// ─── SANKEY ──────────────────────────────────────────────────────────────────
+function sankeyChart(){
+  const el=document.getElementById('sankey-chart');
+  const W=el.parentElement.clientWidth-64, H=620;
+  el.setAttribute('width',W); el.setAttribute('height',H);
+  const svg=d3.select('#sankey-chart');
+  const sectorNames=Object.keys(D.sankey);
+  const groupNames=["Temel Gümrükleme","Belge & Arşiv","Mali Entegrasyon","Dijital Dönüşüm"];
+  const nodes=[...sectorNames.map(n=>({name:n,type:'sector'})),...groupNames.map(n=>({name:n,type:'group'}))];
+  const ni=Object.fromEntries(nodes.map((n,i)=>[n.name,i]));
+  const links=[];
+  sectorNames.forEach(sec=>{Object.entries(D.sankey[sec]).forEach(([grp,val])=>{links.push({source:ni[sec],target:ni[grp],value:val})})});
+  try{
+    const sk=d3.sankey().nodeWidth(20).nodePadding(8).extent([[1,1],[W-1,H-5]]);
+    const {nodes:sn,links:sl}=sk({nodes:nodes.map(d=>({...d})),links:links.map(d=>({...d}))});
+    svg.append('g').selectAll('path').data(sl).enter().append('path')
+      .attr('d',d3.sankeyLinkHorizontal())
+      .attr('stroke',d=>d.source.type==='sector'?(SC[d.source.name]||'#4B9FE1'):GC[d.source.name])
+      .attr('stroke-width',d=>Math.max(1,d.width)).attr('fill','none').attr('opacity',.22)
+      .on('mouseover',function(e,d){d3.select(this).attr('opacity',.55);tip(e,`<strong>${d.source.name}</strong><br>→ ${d.target.name}<br>${d.value} müşteri`)})
+      .on('mousemove',mv).on('mouseout',function(){d3.select(this).attr('opacity',.22);ht()});
+    const ng=svg.append('g').selectAll('g').data(sn).enter().append('g');
+    ng.append('rect')
+      .attr('x',d=>d.x0).attr('y',d=>d.y0).attr('height',d=>Math.max(1,d.y1-d.y0)).attr('width',d=>d.x1-d.x0)
+      .attr('fill',d=>d.type==='group'?GC[d.name]:(SC[d.name]||'#4B9FE1')).attr('rx',4).attr('opacity',.92)
+      .on('mouseover',function(e,d){tip(e,`<strong>${d.name}</strong>`)}).on('mousemove',mv).on('mouseout',ht);
+    svg.append('g').selectAll('text').data(sn).enter().append('text')
+      .attr('x',d=>d.x0<W/2?d.x1+10:d.x0-10).attr('y',d=>(d.y1+d.y0)/2).attr('dy','0.35em')
+      .attr('text-anchor',d=>d.x0<W/2?'start':'end')
+      .attr('font-size',d=>d.type==='group'?13:11).attr('font-weight',d=>d.type==='group'?'700':'500')
+      .attr('fill',d=>d.type==='group'?GC[d.name]:'var(--text2)').text(d=>d.name);
+  }catch(err){
+    svg.append('text').attr('x',W/2).attr('y',H/2).attr('text-anchor','middle').attr('fill','var(--text3)').text('Sankey yüklenemedi — d3-sankey CDN gerekli');
+  }
+}
+
+// ─── VALUE PROP ──────────────────────────────────────────────────────────────
+function valueProp(){
+  const cards=document.getElementById('vp-cards');
+  D.vgs.forEach(v=>{
+    cards.innerHTML+=`<div class="vp" style="--vc:${v.c}">
+      <div class="vp-num">GRUP ${v.id}</div>
+      <div class="vp-name">${v.lbl}</div>
+      <div class="vp-pct">${v.pct}%</div>
+      <div class="vp-pct-lbl">mevcut penetrasyon</div>
+      <div class="vp-desc">${v.desc}</div>
+      <div class="tag-row">${v.mods.map(m=>`<span class="mtag">${m}</span>`).join('')}</div>
+      <div class="vp-tip">💡 ${v.tip}</div>
+    </div>`;
+  });
+  // table
+  const REC_MODS={
+    'Dijital Dönüşüm + EvrimX':'EvrimRPA, Beyanname API, Dinamik Ent, Ncts — otomasyon & bulut geçişi',
+    'Belge & Arşiv + Mali Entegrasyon':'ArsivSistemi, WebGümrük, E-Fatura, Ön Muhasebe',
+    'Temel Gümrükleme → Arşiv':'İthalat / İhracat tamamlama + ArsivSistemi ilk adım'
+  };
+  const rec=d=>{
+    if(d.seg==='Şampiyon'||d.seg==='Uzman')return{g:'Dijital Dönüşüm + EvrimX',c:'#8B5CF6'};
+    if(d.p>=3)return{g:'Belge & Arşiv + Mali Entegrasyon',c:'#F97316'};
+    return{g:'Temel Gümrükleme → Arşiv',c:'#4B9FE1'};
+  };
+  const sc={'Şampiyon':'b-gold','Uzman':'b-teal','Çekirdek Kullanıcı':'b-orange','Büyüme Adayı':'b-gray'};
+  document.getElementById('vp-tbl').innerHTML=`
+    <thead><tr><th>Müşteri</th><th>Sektör</th><th>Ürün</th><th>Segment</th><th>Öneri <span style="font-size:10px;color:var(--text3);font-weight:400">(hover → modüller)</span></th></tr></thead>
+    <tbody>${D.top30.map(d=>{const r=rec(d);return`<tr>
+      <td class="nm">${d.n}</td><td>${d.s}</td>
+      <td><strong style="color:var(--blue);font-size:15px">${d.p}</strong></td>
+      <td><span class="badge ${sc[d.seg]||'b-gray'}">${d.seg}</span></td>
+      <td><span style="font-size:12px;font-weight:700;color:${r.c};cursor:default"
+        onmouseenter="tip(event,'<strong style=\\'color:${r.c}\\'>${r.g}</strong><br><span style=\\'font-size:11px;color:#94A8C4\\'>${REC_MODS[r.g]}</span>')"
+        onmousemove="mv(event)" onmouseleave="ht()">${r.g} ℹ</span></td>
+    </tr>`}).join('')}</tbody>`;
+}
+
+// ─── UPSELL ──────────────────────────────────────────────────────────────────
+function upsell(){
+  const rows=[
+    {s:'Şampiyon',ct:9,vs:[10,44,56,11]},
+    {s:'Uzman',ct:14,vs:[21,57,79,36]},
+    {s:'Çekirdek Kullanıcı',ct:4,vs:[50,75,100,75]},
+    {s:'Büyüme Adayı',ct:110,vs:[32,72,80,92]}
+  ];
+  const grps=['Temel Gümrükleme','Belge & Arşiv','Mali Entegrasyon','Dijital Dönüşüm'];
+  const gcs=['#4B9FE1','#00C9A7','#F97316','#8B5CF6'];
+  let html=`<table style="width:100%;border-collapse:collapse"><thead><tr>
+    <th style="padding:8px 12px;font-size:11px;color:var(--text3);text-align:left">Segment</th>
+    <th style="padding:8px 10px;font-size:11px;color:var(--text3);text-align:center;white-space:nowrap">Müşteri<br>Sayısı</th>
+    ${grps.map((g,i)=>`<th style="padding:8px 6px;font-size:11px;color:${gcs[i]};font-weight:700;text-align:center">${g}</th>`).join('')}
+  </tr></thead><tbody>`;
+  rows.forEach(r=>{
+    html+=`<tr><td style="padding:10px 12px;font-size:13px;font-weight:500;color:var(--text2)">${r.s}</td>
+      <td style="padding:8px 10px;text-align:center;font-size:15px;font-weight:800;color:var(--text1)">${r.ct}</td>`;
+    r.vs.forEach((v,i)=>{
+      const a=v/100;
+      const col=`rgba(${Math.round(248*a+75*(1-a))},${Math.round(113*a+159*(1-a))},${Math.round(113*a+225*(1-a))}`;
+      html+=`<td style="padding:8px 6px;text-align:center"><div style="display:inline-flex;align-items:center;justify-content:center;width:56px;height:38px;border-radius:10px;background:${col},.15);border:1px solid ${col},.35);font-size:13px;font-weight:800;color:${col},1)">${v}%</div></td>`;
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  document.getElementById('heatmap').innerHTML=html+`<p style="font-size:11px;color:var(--text3);margin-top:10px">% sahibi olmayan müşteri oranı</p>`;
+  const cl=document.getElementById('campaigns');
+  D.campaigns.forEach(c=>{
+    cl.innerHTML+=`<div class="camp">
+      <div class="camp-num" style="background:${c.c}20;border:1px solid ${c.c}40;color:${c.c}">${c.pr}</div>
+      <div>
+        <div class="camp-name">${c.nm}</div>
+        <div class="camp-desc">${c.desc}</div>
+        <div class="camp-target" style="color:${c.c}">${c.tgt}</div>
+      </div>
+    </div>`;
+  });
+}
+
+// ─── EVRIMX TABLE ────────────────────────────────────────────────────────────
+function evrimxTable(){
+  const pc={'Öncelik 1':'#FBBF24','Öncelik 2':'#FF6B35','Öncelik 3':'#4B9FE1'};
+  document.getElementById('evrimx-tbl').innerHTML=`
+    <thead><tr><th>Müşteri</th><th>Sektör</th><th>Ürün Adedi</th><th>Kullanıcı</th><th>EvrimX Önceliği</th></tr></thead>
+    <tbody>${D.evrimx.map(d=>`<tr>
+      <td class="nm">${d.n}</td>
+      <td style="color:var(--text3)">${d.s}</td>
+      <td><strong style="color:var(--blue);font-size:18px">${d.p}</strong></td>
+      <td style="font-weight:600">${d.u}</td>
+      <td><span style="background:${pc[d.pr]}20;color:${pc[d.pr]};border:1px solid ${pc[d.pr]}50;border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700">${d.pr}</span></td>
+    </tr>`).join('')}</tbody>`;
+}
+
+// ─── THEME TOGGLE ────────────────────────────────────────────────────────────
+function toggleTheme(){
+  const isLight=document.body.classList.toggle('light');
+  document.getElementById('theme-btn').innerHTML=isLight?'🌙 Light':'🌑 Dark';
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+window.addEventListener('load',()=>{
+  kpis(); treemap(); donut(); lollipop(); scatter(); prodSegs(); sankeyChart(); valueProp(); upsell(); evrimxTable(); sectorCustTable();
+});
+</script>
+</body>
+</html>
